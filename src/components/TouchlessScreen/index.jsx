@@ -71,8 +71,11 @@ export default function TouchlessScreen({ onNavigateLanding }) {
         }}
       />
 
-      {/* Three.js Farm Scene */}
-      <div className="absolute inset-0" style={{ zIndex: 1, opacity: cameraGranted ? 0.7 : 1 }}>
+      {/* Three.js Farm Scene — always visible; blend with video when camera active */}
+      <div
+        className="absolute inset-0"
+        style={{ zIndex: 1, mixBlendMode: cameraGranted ? 'screen' : 'normal', opacity: cameraGranted ? 0.75 : 1 }}
+      >
         <FarmScene activeLayer={activeLayer} />
       </div>
 
