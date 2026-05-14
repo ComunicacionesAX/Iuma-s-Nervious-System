@@ -8,212 +8,235 @@ export default function FarmScene() {
     const mount = mountRef.current
     if (!mount) return
 
-    // Use window dimensions — clientWidth/Height can be 0 before paint
     const W = window.innerWidth
     const H = window.innerHeight
 
-    // Renderer — opaque dark background so the scene is always visible
-    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false })
+    // ── Renderer ────────────────────────────────────────────────────────
+    let renderer
+    try {
+      renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false })
+    } catch (e) {
+      console.warn('WebGL not available:', e)
+      return
+    }
     renderer.setSize(W, H)
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
     renderer.setClearColor(0x0a0f0d, 1)
     mount.appendChild(renderer.domElement)
 
-    // Scene
+    // ── Scene ────────────────────────────────────────────────────────────
     const scene = new THREE.Scene()
-    scene.fog = new THREE.FogExp2(0x0a0f0d, 0.03)
+    scene.fog = new THREE.FogExp2(0x0a0f0d, 0.025)
 
-    // Camera
-    const camera = new THREE.PerspectiveCamera(60, W / H, 0.1, 200)
-    camera.position.set(0, 6, 18)
+    const camera = new THREE.PerspectiveCamera(55, W / H, 0.1, 200)
+    camera.position.set(0, 7, 20)
     camera.lookAt(0, 0, 0)
 
-    // Lighting — brighter so objects are clearly visible
-    scene.add(new THREE.AmbientLight(0x3a5a4a, 1.2))
-    const dirLight = new THREE.DirectionalLight(0x7ab89a, 1.6)
-    dirLight.position.set(5, 10, 8)
-    scene.add(dirLight)
-    const fillLight = new THREE.DirectionalLight(0xffffff, 0.4)
-    fillLight.position.set(-5, 5, -5)
-    scene.add(fillLight)
+    // ── Lights — bright enough to see ───────────────────────────────────
+    scene.add(new THREE.AmbientLight(0xffffff, 0.6))
 
-    // Floor
+    const key = new THREE.DirectionalLight(0xaaffdd, 2.0)
+    key.position.set(8, 14, 10)
+    scene.add(key)
+
+    const fill = new THREE.DirectionalLight(0x44ffaa, 0.8)
+    fill.position.set(-8, 6, -4)
+    scene.add(fill)
+
+    // ── Floor ────────────────────────────────────────────────────────────
     const floor = new THREE.Mesh(
-      new THREE.PlaneGeometry(60, 60),
-      new THREE.MeshStandardMaterial({ color: 0x1a2420, roughness: 0.9 })
+      new THREE.PlaneGeometry(80, 80),
+      new THREE.MeshStandardMaterial({ color: 0x162018, roughness: 1 })
     )
     floor.rotation.x = -Math.PI / 2
     floor.position.y = -1.5
     scene.add(floor)
 
-    // Grid
-    const grid = new THREE.GridHelper(40, 40, 0x3D5A52, 0x1e3028)
+    const grid = new THREE.GridHelper(60, 60, 0x3D5A52, 0x243028)
     grid.position.y = -1.49
-    grid.material.opacity = 0.4
+    grid.material.opacity = 0.5
     grid.material.transparent = true
     scene.add(grid)
 
-    // Silos
-    const siloPositions = [
-      [-8, 0, -6], [-4, 0, -8], [4, 0, -8], [8, 0, -6],
-      [-6, 0, -12], [6, 0, -12]
+    // ── Silos — visible teal/grey ────────────────────────────────────────
+    const siloData = [
+      [-8, -6], [-4, -8], [4, -8], [8, -6], [-6, -12], [6, -12]
     ]
     const siloGroup = new THREE.Group()
-    siloPositions.forEach(([x, , z]) => {
-      const h = 5 + Math.random() * 2
+    siloData.forEach(([x, z]) => {
+      const h = 5 + Math.random() * 2.5
 
-      // Shell — lighter colour so it's visible
-      const silo = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.9, 0.9, h, 16),
-        new THREE.MeshStandardMaterial({ color: 0x3a5248, roughness: 0.5, metalness: 0.5 })
+      // Body — visible mid-grey teal
+      const body = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.95, 0.95, h, 20),
+        new THREE.MeshStandardMaterial({ color: 0x4a6860, roughness: 0.4, metalness: 0.6 })
       )
-      silo.position.set(x, h / 2 - 1.5, z)
-      siloGroup.add(silo)
+      body.position.set(x, h / 2 - 1.5, z)
+      siloGroup.add(body)
 
-      // Emissive green strip
+      // Bright emissive green strip
       const strip = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.93, 0.93, h * 0.55, 16, 1, true),
-        new THREE.MeshBasicMaterial({ color: 0x3D5A52, transparent: true, opacity: 0.6, side: THREE.DoubleSide })
+        new THREE.CylinderGeometry(0.97, 0.97, h * 0.5, 20, 1, true),
+        new THREE.MeshBasicMaterial({ color: 0x3dffaa, transparent: true, opacity: 0.25, side: THREE.DoubleSide })
       )
       strip.position.set(x, h / 2 - 1.5, z)
       siloGroup.add(strip)
 
-      // Animated fill level
-      const fillH = h * 0.3
+      // Animated fill — bright green
+      const fillH = h * 0.35
       const fill = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.7, 0.7, fillH, 16),
-        new THREE.MeshBasicMaterial({ color: 0x5a8a7a, transparent: true, opacity: 0.35 })
+        new THREE.CylinderGeometry(0.72, 0.72, fillH, 16),
+        new THREE.MeshBasicMaterial({ color: 0x5affcc, transparent: true, opacity: 0.3 })
       )
       fill.position.set(x, -1.5 + fillH / 2, z)
-      fill.userData.isFill = true
-      fill.userData.baseY = -1.5
-      fill.userData.maxH = h * 0.55
+      fill.userData = { isFill: true, baseY: -1.5, maxH: h * 0.5 }
       siloGroup.add(fill)
+
+      // Top cap highlight
+      const cap = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.95, 0.95, 0.12, 20),
+        new THREE.MeshStandardMaterial({ color: 0x7addc0, roughness: 0.3, metalness: 0.8 })
+      )
+      cap.position.set(x, h - 1.5 + 0.06, z)
+      siloGroup.add(cap)
     })
     scene.add(siloGroup)
 
-    // Sensor nodes + pulsing lights
-    const nodePositions = [
-      [-5, 0.5, -2], [5, 0.5, -2], [-3, 0.5, 2], [3, 0.5, 2],
-      [-7, 0.5, 0], [7, 0.5, 0], [0, 0.5, -4], [0, 0.5, 3]
+    // ── Sensor nodes — bright teal spheres ───────────────────────────────
+    const nodePos = [
+      [-5, 0.5, -2], [5, 0.5, -2], [-3, 0.5, 2.5], [3, 0.5, 2.5],
+      [-7, 0.5, 0], [7, 0.5, 0], [0, 0.5, -4], [0, 0.5, 3.5]
     ]
     const nodeLights = []
     const nodeGroup = new THREE.Group()
-    nodePositions.forEach(([x, y, z]) => {
-      const node = new THREE.Mesh(
-        new THREE.SphereGeometry(0.2, 12, 12),
-        new THREE.MeshBasicMaterial({ color: 0x5a8a7a })
+    nodePos.forEach(([x, y, z]) => {
+      // Outer glow sphere
+      const glow = new THREE.Mesh(
+        new THREE.SphereGeometry(0.35, 12, 12),
+        new THREE.MeshBasicMaterial({ color: 0x3dffaa, transparent: true, opacity: 0.15 })
       )
-      node.position.set(x, y, z)
-      nodeGroup.add(node)
+      glow.position.set(x, y, z)
+      nodeGroup.add(glow)
 
-      const light = new THREE.PointLight(0x5a8a7a, 1.2, 6)
+      // Core sphere
+      const core = new THREE.Mesh(
+        new THREE.SphereGeometry(0.18, 12, 12),
+        new THREE.MeshBasicMaterial({ color: 0x7affcc })
+      )
+      core.position.set(x, y, z)
+      nodeGroup.add(core)
+
+      // Point light
+      const light = new THREE.PointLight(0x3dffaa, 1.5, 7)
       light.position.set(x, y, z)
       nodeGroup.add(light)
       nodeLights.push(light)
     })
     scene.add(nodeGroup)
 
-    // Connection lines
-    const lineMat = new THREE.LineBasicMaterial({ color: 0x3D5A52, transparent: true, opacity: 0.4 })
-    [[0,1],[0,2],[1,3],[2,4],[3,5],[4,6],[5,7],[2,6],[3,7]].forEach(([a, b]) => {
+    // ── Connection lines ─────────────────────────────────────────────────
+    const lineMat = new THREE.LineBasicMaterial({ color: 0x3dffaa, transparent: true, opacity: 0.3 })
+    [[0,1],[0,2],[1,3],[2,4],[3,5],[4,6],[5,7],[0,6],[1,7]].forEach(([a, b]) => {
       const geo = new THREE.BufferGeometry().setFromPoints([
-        new THREE.Vector3(...nodePositions[a]),
-        new THREE.Vector3(...nodePositions[b])
+        new THREE.Vector3(...nodePos[a]),
+        new THREE.Vector3(...nodePos[b])
       ])
       scene.add(new THREE.Line(geo, lineMat))
     })
 
-    // Ceiling particles
-    const PCount = 200
-    const pPos = new Float32Array(PCount * 3)
+    // ── Ceiling particles ────────────────────────────────────────────────
+    const PC = 240
+    const pArr = new Float32Array(PC * 3)
     const pVel = []
-    for (let i = 0; i < PCount; i++) {
-      pPos[i * 3] = (Math.random() - 0.5) * 30
-      pPos[i * 3 + 1] = 8 + Math.random() * 3
-      pPos[i * 3 + 2] = (Math.random() - 0.5) * 20
-      pVel.push({ x: (Math.random() - 0.5) * 0.04, z: (Math.random() - 0.5) * 0.04 })
+    for (let i = 0; i < PC; i++) {
+      pArr[i*3]   = (Math.random() - 0.5) * 32
+      pArr[i*3+1] = 8 + Math.random() * 3
+      pArr[i*3+2] = (Math.random() - 0.5) * 22
+      pVel.push({ x: (Math.random()-0.5)*0.04, z: (Math.random()-0.5)*0.04 })
     }
     const pGeo = new THREE.BufferGeometry()
-    pGeo.setAttribute('position', new THREE.BufferAttribute(pPos, 3))
-    const particles = new THREE.Points(pGeo, new THREE.PointsMaterial({ color: 0x5a8a7a, size: 0.1, transparent: true, opacity: 0.7 }))
+    pGeo.setAttribute('position', new THREE.BufferAttribute(pArr, 3))
+    const particles = new THREE.Points(pGeo, new THREE.PointsMaterial({ color: 0x5affcc, size: 0.12, transparent: true, opacity: 0.75 }))
     scene.add(particles)
 
-    // Floating ROI panel
+    // ── Floating ROI panel ───────────────────────────────────────────────
     const pc = document.createElement('canvas')
     pc.width = 256; pc.height = 128
     const ctx = pc.getContext('2d')
-    ctx.fillStyle = 'rgba(10,30,20,0.92)'
+    ctx.fillStyle = '#0a1a10'
     ctx.fillRect(0, 0, 256, 128)
-    ctx.strokeStyle = '#5a8a7a'
+    ctx.strokeStyle = '#3dffaa'
     ctx.lineWidth = 1.5
     ctx.strokeRect(2, 2, 252, 124)
-    ctx.fillStyle = '#5a8a7a'
+    ctx.fillStyle = '#3dffaa'
     ctx.font = 'bold 10px monospace'
     ctx.fillText('ROI PROJECTION', 14, 26)
     ctx.fillStyle = '#ffffff'
-    ctx.font = 'bold 30px monospace'
-    ctx.fillText('+18.7%', 14, 62)
-    ctx.fillStyle = '#5a8a7a'
+    ctx.font = 'bold 32px monospace'
+    ctx.fillText('+18.7%', 14, 66)
+    ctx.fillStyle = '#3dffaa'
     ctx.font = 'bold 10px monospace'
-    ctx.fillText('CO₂ REDUCTION', 14, 86)
-    ctx.fillStyle = '#7abcaa'
+    ctx.fillText('CO₂ REDUCTION', 14, 92)
+    ctx.fillStyle = '#7affcc'
     ctx.font = 'bold 22px monospace'
-    ctx.fillText('−8.5%', 14, 114)
+    ctx.fillText('−8.5%', 14, 118)
+
     const panel = new THREE.Mesh(
-      new THREE.PlaneGeometry(3.5, 1.75),
+      new THREE.PlaneGeometry(3.8, 1.9),
       new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(pc), transparent: true, side: THREE.DoubleSide })
     )
-    panel.position.set(-5, 3.5, -3)
-    panel.rotation.y = 0.4
+    panel.position.set(-5.5, 4, -3)
+    panel.rotation.y = 0.35
     scene.add(panel)
 
-    // Mouse parallax
+    // ── Mouse parallax ───────────────────────────────────────────────────
     const mouse = { x: 0, y: 0 }
-    const onMouse = (e) => {
-      mouse.x = (e.clientX / window.innerWidth - 0.5) * 2
+    const onMouse = e => {
+      mouse.x = (e.clientX / window.innerWidth  - 0.5) * 2
       mouse.y = (e.clientY / window.innerHeight - 0.5) * 2
     }
     window.addEventListener('mousemove', onMouse)
 
-    // Animation
-    let frame = 0
-    let animId
+    // ── Animation loop ───────────────────────────────────────────────────
+    let frame = 0, animId
     const animate = () => {
       animId = requestAnimationFrame(animate)
       frame++
-      scene.rotation.y += 0.0005
-      camera.position.x += (mouse.x * 1.5 - camera.position.x) * 0.02
-      camera.position.y += (-mouse.y * 0.5 + 6 - camera.position.y) * 0.02
+
+      scene.rotation.y += 0.0004
+      camera.position.x += (mouse.x * 2 - camera.position.x) * 0.018
+      camera.position.y += (-mouse.y * 0.8 + 7 - camera.position.y) * 0.018
       camera.lookAt(scene.position)
 
-      nodeLights.forEach((l, i) => { l.intensity = 0.8 + Math.sin(frame * 0.05 + i * 0.8) * 0.5 })
+      // Pulse lights
+      nodeLights.forEach((l, i) => { l.intensity = 1.0 + Math.sin(frame * 0.05 + i * 0.9) * 0.6 })
 
-      siloGroup.children.forEach(child => {
-        if (!child.userData.isFill) return
-        const t = Math.sin(frame * 0.008 + child.position.x * 0.3) * 0.5 + 0.5
-        const newH = 0.5 + t * child.userData.maxH
-        child.scale.y = newH / (child.userData.maxH * 0.5)
-        child.position.y = child.userData.baseY + newH / 2
+      // Animate fills
+      siloGroup.children.forEach(c => {
+        if (!c.userData.isFill) return
+        const t = Math.sin(frame * 0.009 + c.position.x * 0.25) * 0.5 + 0.5
+        const nh = 0.4 + t * c.userData.maxH
+        c.scale.y = nh / (c.userData.maxH * 0.5)
+        c.position.y = c.userData.baseY + nh / 2
       })
 
-      const arr = pGeo.attributes.position.array
-      for (let i = 0; i < PCount; i++) {
-        arr[i * 3] += pVel[i].x
-        arr[i * 3 + 2] += pVel[i].z
-        if (arr[i * 3] > 15 || arr[i * 3] < -15) pVel[i].x *= -1
-        if (arr[i * 3 + 2] > 10 || arr[i * 3 + 2] < -10) pVel[i].z *= -1
+      // Move particles
+      for (let i = 0; i < PC; i++) {
+        pArr[i*3]   += pVel[i].x
+        pArr[i*3+2] += pVel[i].z
+        if (pArr[i*3]   >  16 || pArr[i*3]   < -16) pVel[i].x *= -1
+        if (pArr[i*3+2] >  11 || pArr[i*3+2] < -11) pVel[i].z *= -1
       }
       pGeo.attributes.position.needsUpdate = true
 
-      panel.rotation.y = 0.4 + Math.sin(frame * 0.01) * 0.05
-      panel.position.y = 3.5 + Math.sin(frame * 0.015) * 0.1
+      panel.rotation.y = 0.35 + Math.sin(frame * 0.012) * 0.06
+      panel.position.y = 4 + Math.sin(frame * 0.016) * 0.12
 
       renderer.render(scene, camera)
     }
     animate()
 
-    // Resize
+    // ── Resize ───────────────────────────────────────────────────────────
     const onResize = () => {
       const w = window.innerWidth, h = window.innerHeight
       camera.aspect = w / h
@@ -226,11 +249,11 @@ export default function FarmScene() {
       cancelAnimationFrame(animId)
       window.removeEventListener('mousemove', onMouse)
       window.removeEventListener('resize', onResize)
-      scene.traverse(obj => {
-        if (obj.geometry) obj.geometry.dispose()
-        if (obj.material) {
-          if (Array.isArray(obj.material)) obj.material.forEach(m => m.dispose())
-          else obj.material.dispose()
+      scene.traverse(o => {
+        if (o.geometry) o.geometry.dispose()
+        if (o.material) {
+          if (Array.isArray(o.material)) o.material.forEach(m => m.dispose())
+          else o.material.dispose()
         }
       })
       renderer.dispose()
@@ -241,7 +264,7 @@ export default function FarmScene() {
   return (
     <div
       ref={mountRef}
-      style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', zIndex: 1, background: '#0a0f0d' }}
+      style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', background: '#0a0f0d' }}
     />
   )
 }

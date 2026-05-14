@@ -15,24 +15,27 @@ export default function App() {
   const startWithAudio = useCallback(async () => {
     setEntered(true)
     try {
-      const Tone = await import('tone')
-      const ctx = Tone.getContext()
-      if (ctx.state !== 'running') await ctx.resume()
+      // Tone.js v14 — start() must be called from a user gesture
+      const T = await import('tone')
+      await T.start()                        // unlocks the AudioContext
 
-      const hum = new Tone.Oscillator(60, 'sine')
-      const vol = new Tone.Volume(-42)
-      const reverb = new Tone.Reverb({ decay: 4, wet: 0.5 })
-      hum.chain(vol, reverb, Tone.getDestination())
+      const hum = new T.Oscillator({ frequency: 60, type: 'sine' })
+      const vol = new T.Volume(-44)
+      const reverb = new T.Reverb({ decay: 5, wet: 0.55 })
+      await reverb.generate()               // pre-compute IR
+      hum.connect(vol)
+      vol.connect(reverb)
+      reverb.toDestination()
       hum.start()
 
       synthRef.current = {
         ping() {
           try {
-            const s = new Tone.Synth({
+            const s = new T.Synth({
               oscillator: { type: 'triangle' },
-              envelope: { attack: 0.01, decay: 0.1, sustain: 0, release: 0.12 }
+              envelope: { attack: 0.005, decay: 0.09, sustain: 0, release: 0.1 }
             }).toDestination()
-            s.volume.value = -24
+            s.volume.value = -22
             s.triggerAttackRelease(880, '32n')
             setTimeout(() => s.dispose(), 600)
           } catch (_) {}
