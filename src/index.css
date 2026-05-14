@@ -1,0 +1,74 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+  }
+
+  html, body {
+    font-family: 'Montserrat', sans-serif;
+    background: #0a0f0d;
+    color: #1a1a1a;
+    overflow-x: hidden;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  :root {
+    --bg-dark: #0a0f0d;
+    --bg-light: #ffffff;
+    --accent: #3D5A52;
+    --accent-mid: #5a8a7a;
+    --accent-pale: #f0f5f3;
+    --text-main: #1a1a1a;
+    --text-muted: #64748b;
+  }
+
+  /* Hide default cursor — custom cursor replaces it */
+  body.custom-cursor-active * {
+    cursor: none !important;
+  }
+}
+
+@layer utilities {
+  .letter-spacing-5 { letter-spacing: 5px; }
+  .letter-spacing-8 { letter-spacing: 8px; }
+  .letter-spacing-02 { letter-spacing: 0.2em; }
+
+  .heading-label {
+    font-weight: 700;
+    font-size: 0.625rem; /* 10px */
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+  }
+
+  .heading-display {
+    font-weight: 300;
+    letter-spacing: 0.3em;
+    text-transform: uppercase;
+  }
+
+  .border-accent { border-color: #3D5A52; }
+  .border-accent-dim { border-color: rgba(61, 90, 82, 0.3); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: #0a0f0d; }
+::-webkit-scrollbar-thumb { background: #3D5A52; border-radius: 2px; }
+
+/* Landing page scrollbar */
+.landing-scroll::-webkit-scrollbar-track { background: #f0f5f3; }
+.landing-scroll::-webkit-scrollbar-thumb { background: #3D5A52; }
