@@ -6,6 +6,7 @@ import VirtualButtons from './VirtualButtons'
 import InfoPanel from './InfoPanel'
 import DeepDive from './DeepDive'
 import SceneLabels from './SceneLabels'
+import ErrorBoundary from '../shared/ErrorBoundary'
 
 export default function TouchlessScreen({ onNavigateLanding }) {
   const [activeLayer, setActiveLayer] = useState('sento')
@@ -76,7 +77,9 @@ export default function TouchlessScreen({ onNavigateLanding }) {
         className="absolute inset-0"
         style={{ zIndex: 1, mixBlendMode: cameraGranted ? 'screen' : 'normal', opacity: cameraGranted ? 0.75 : 1 }}
       >
-        <FarmScene activeLayer={activeLayer} />
+        <ErrorBoundary>
+          <FarmScene activeLayer={activeLayer} />
+        </ErrorBoundary>
       </div>
 
       {/* Vignette overlay */}
