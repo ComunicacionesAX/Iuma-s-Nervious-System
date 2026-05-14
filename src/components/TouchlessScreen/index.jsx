@@ -17,28 +17,27 @@ export default function TouchlessScreen({ onNavigateLanding }) {
   const streamRef = useRef(null)
   const pinchCooldown = useRef(false)
 
+  // ── Camera request — stable ref, empty deps ─────────────────────────
   const requestCamera = useCallback(() => {
-    setCameraStatus('idle')
+    if (!navigator.mediaDevices) { setCameraStatus('denied'); return }
     navigator.mediaDevices
-      ?.getUserMedia({ video: { width: 1280, height: 720, facingMode: 'user' } })
+      .getUserMedia({ video: { width: 1280, height: 720, facingMode: 'user' } })
       .then(stream => {
         streamRef.current = stream
-        if (videoRef.current) {
-          videoRef.current.srcObject = stream
-          videoRef.current.play().catch(() => {})
-        }
+        const vid = videoRef.current
+        if (vid) { vid.srcObject = stream; vid.play().catch(() => {}) }
         setCameraStatus('granted')
       })
       .catch(() => setCameraStatus('denied'))
-  }, [])
+  }, []) // ← empty — uses only refs and state setters (both stable)
 
-  // Auto-request on mount
   useEffect(() => {
     requestCamera()
     return () => { streamRef.current?.getTracks().forEach(t => t.stop()) }
-  }, [requestCamera])
+  }, []) // ← run once on mount only
 
   const handleIndexPosition = useCallback(pos => setIndexPos(pos), [])
+
   const handlePinch = useCallback(() => {
     if (pinchCooldown.current) return
     pinchCooldown.current = true
@@ -49,53 +48,41 @@ export default function TouchlessScreen({ onNavigateLanding }) {
   const cameraGranted = cameraStatus === 'granted'
 
   return (
-    <div style={{ position: 'relative', width: '100vw', height: '100vh', overflow: 'hidden', background: '#0a0f0d' }}>
+    <div className="relative w-screen h-screen overflow-hidden" style={{ background: '#0a0f0d' }}>
 
       {/* Camera feed */}
       <video
         ref={videoRef}
         autoPlay playsInline muted
-        style={{
-          position: 'absolute', inset: 0, width: '100%', height: '100%',
-          objectFit: 'cover', zIndex: 0,
-          opacity: cameraGranted ? 0.45 : 0,
-          transform: 'scaleX(-1)'
-        }}
+        className="absolute inset-0 w-full h-full object-cover"
+        style={{ zIndex: 0, opacity: cameraGranted ? 0.45 : 0, transform: 'scaleX(-1)' }}
       />
 
-      {/* Three.js farm — full opacity when no camera, blended when camera active */}
-      <div style={{
-        position: 'absolute', inset: 0, zIndex: 1,
-        opacity: cameraGranted ? 0.8 : 1,
-        mixBlendMode: cameraGranted ? 'screen' : 'normal'
-      }}>
+      {/* Three.js farm */}
+      <div className="absolute inset-0" style={{ zIndex: 1 }}>
         <ErrorBoundary>
           <FarmScene />
         </ErrorBoundary>
       </div>
 
-      {/* Edge vignette */}
-      <div style={{
-        position: 'absolute', inset: 0, zIndex: 2, pointerEvents: 'none',
-        background: 'radial-gradient(ellipse at center, transparent 45%, rgba(10,15,13,0.65) 100%)'
-      }} />
+      {/* Vignette */}
+      <div
+        className="absolute inset-0 pointer-events-none"
+        style={{ zIndex: 2, background: 'radial-gradient(ellipse at center, transparent 45%, rgba(10,15,13,0.65) 100%)' }}
+      />
 
-      {/* Floating HUD labels */}
+      {/* HUD labels */}
       <SceneLabels activeLayer={activeLayer} />
 
-      {/* Hand tracker canvas — only when camera live */}
+      {/* Hand tracker — only when camera is live */}
       {cameraGranted && (
-        <HandTracker
-          onIndexPosition={handleIndexPosition}
-          onPinch={handlePinch}
-          videoRef={videoRef}
-        />
+        <HandTracker onIndexPosition={handleIndexPosition} onPinch={handlePinch} videoRef={videoRef} />
       )}
 
-      {/* Layer info panel — left */}
+      {/* Info panel */}
       <InfoPanel activeLayer={activeLayer} onFullOverview={onNavigateLanding} />
 
-      {/* Layer buttons — right */}
+      {/* Layer buttons */}
       <VirtualButtons
         activeLayer={activeLayer}
         onLayerChange={key => setActiveLayer(key)}
@@ -103,92 +90,90 @@ export default function TouchlessScreen({ onNavigateLanding }) {
       />
 
       {/* Top-left branding */}
-      <div style={{ position: 'absolute', top: 24, left: 24, zIndex: 20, display: 'flex', alignItems: 'center', gap: 12 }}>
-        <div style={{ width: 20, height: 20, border: '1px solid rgba(255,255,255,0.35)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <div style={{ width: 8, height: 8, background: '#3D5A52' }} />
+      <motion.div
+        className="absolute top-6 left-6 flex items-center gap-3"
+        style={{ zIndex: 20 }}
+        initial={{ opacity: 0, y: -10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.3 }}
+      >
+        <div className="w-5 h-5 border border-white/30 flex items-center justify-center">
+          <div className="w-2 h-2" style={{ background: '#3D5A52' }} />
         </div>
-        <span style={{ fontFamily: 'Montserrat,sans-serif', fontSize: 9, fontWeight: 700, letterSpacing: '0.4em', color: 'rgba(255,255,255,0.6)' }}>
+        <span className="font-montserrat text-white/60" style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.4em' }}>
           ILUMA ALLIANCE
         </span>
-        <div style={{ width: 1, height: 16, background: 'rgba(255,255,255,0.12)' }} />
-        <span style={{ fontFamily: 'Montserrat,sans-serif', fontSize: 8, fontWeight: 400, letterSpacing: '0.25em', color: '#3D5A52' }}>
+        <div className="w-px h-4 bg-white/10" />
+        <span className="font-montserrat" style={{ fontSize: 8, fontWeight: 400, letterSpacing: '0.25em', color: '#3D5A52' }}>
           TOUCHLESS INTERFACE
         </span>
-      </div>
+      </motion.div>
 
-      {/* Top-right: camera status */}
-      <div style={{ position: 'absolute', top: 24, right: 24, zIndex: 20, display: 'flex', alignItems: 'center', gap: 16 }}>
-        {/* Camera pill / enable button */}
+      {/* Top-right: camera status + navigation */}
+      <motion.div
+        className="absolute top-6 right-6 flex items-center gap-4"
+        style={{ zIndex: 20 }}
+        initial={{ opacity: 0, y: -10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.4 }}
+      >
         {cameraStatus === 'denied' ? (
           <button
             onClick={requestCamera}
-            style={{
-              fontFamily: 'Montserrat,sans-serif', fontSize: 8, fontWeight: 700,
-              letterSpacing: '0.2em', color: '#fff',
-              background: '#3D5A52', border: 'none', borderRadius: 2,
-              padding: '6px 12px', cursor: 'pointer'
-            }}
+            className="font-montserrat text-white px-3 py-1.5 transition-opacity hover:opacity-80"
+            style={{ fontSize: 8, fontWeight: 700, letterSpacing: '0.2em', background: '#3D5A52', borderRadius: 2, border: 'none', cursor: 'pointer' }}
           >
             ACTIVAR CÁMARA
           </button>
         ) : (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            <div style={{
-              width: 6, height: 6, borderRadius: '50%',
-              background: cameraGranted ? '#22c55e' : '#64748b'
-            }} />
-            <span style={{ fontFamily: 'Montserrat,sans-serif', fontSize: 8, letterSpacing: '0.2em', fontWeight: 500, color: 'rgba(255,255,255,0.35)' }}>
-              {cameraGranted ? 'GESTOS ACTIVOS' : 'INICIANDO CÁMARA…'}
+          <div className="flex items-center gap-2">
+            <div className="w-1.5 h-1.5 rounded-full" style={{ background: cameraGranted ? '#22c55e' : '#64748b' }} />
+            <span className="font-montserrat text-white/30" style={{ fontSize: 8, letterSpacing: '0.2em', fontWeight: 500 }}>
+              {cameraGranted ? 'GESTOS ACTIVOS' : 'INICIANDO…'}
             </span>
           </div>
         )}
 
         <button
           onClick={onNavigateLanding}
-          style={{
-            fontFamily: 'Montserrat,sans-serif', fontSize: 8, fontWeight: 600,
-            letterSpacing: '0.2em', color: 'rgba(255,255,255,0.45)',
-            background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6
-          }}
+          className="font-montserrat text-white/40 hover:text-white/70 transition-colors flex items-center gap-2"
+          style={{ fontSize: 8, fontWeight: 600, letterSpacing: '0.2em', background: 'none', border: 'none', cursor: 'pointer' }}
         >
-          PLATAFORMA COMPLETA
-          <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-            <path d="M2 6h8M6 2l4 4-4 4" stroke="currentColor" strokeWidth="1" strokeLinecap="round"/>
-          </svg>
+          PLATAFORMA COMPLETA →
         </button>
-      </div>
+      </motion.div>
 
-      {/* Camera permission prompt — shown when denied */}
+      {/* Camera denied message */}
       {cameraStatus === 'denied' && (
-        <div style={{
-          position: 'absolute', bottom: 80, left: '50%', transform: 'translateX(-50%)',
-          zIndex: 20, textAlign: 'center',
-          background: 'rgba(10,15,13,0.9)', border: '1px solid rgba(61,90,82,0.4)',
-          borderRadius: 2, padding: '16px 24px', backdropFilter: 'blur(8px)'
-        }}>
-          <p style={{ fontFamily: 'Montserrat,sans-serif', fontSize: 11, fontWeight: 600, letterSpacing: '0.15em', color: '#fff', margin: '0 0 6px' }}>
+        <div
+          className="absolute left-1/2 -translate-x-1/2 text-center px-6 py-4"
+          style={{ bottom: 80, zIndex: 20, background: 'rgba(10,15,13,0.9)', border: '1px solid rgba(61,90,82,0.4)', borderRadius: 2 }}
+        >
+          <p className="font-montserrat text-white" style={{ fontSize: 11, fontWeight: 600, letterSpacing: '0.12em', marginBottom: 6 }}>
             Para usar gestos, activa la cámara
           </p>
-          <p style={{ fontFamily: 'Montserrat,sans-serif', fontSize: 10, color: 'rgba(255,255,255,0.45)', margin: 0, letterSpacing: '0.05em' }}>
-            Haz clic en el candado 🔒 arriba → Cámara → Permitir → Recargar
+          <p className="font-montserrat" style={{ fontSize: 10, color: 'rgba(255,255,255,0.4)', letterSpacing: '0.04em' }}>
+            Candado 🔒 en la barra del navegador → Cámara → Permitir → Recargar
           </p>
         </div>
       )}
 
-      {/* Gesture hint */}
+      {/* Pinch hint */}
       {cameraGranted && !showDeepDive && (
         <motion.div
-          style={{ position: 'absolute', bottom: 60, left: '50%', translateX: '-50%', zIndex: 20 }}
-          initial={{ opacity: 0 }} animate={{ opacity: [0, 0.6, 0] }}
-          transition={{ delay: 2.5, duration: 2, repeat: 2 }}
+          className="absolute bottom-16 left-1/2 -translate-x-1/2"
+          style={{ zIndex: 20 }}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: [0, 0.6, 0] }}
+          transition={{ delay: 3, duration: 2, repeat: 2 }}
         >
-          <p style={{ fontFamily: 'Montserrat,sans-serif', fontSize: 9, letterSpacing: '0.25em', color: 'rgba(255,255,255,0.35)', textAlign: 'center' }}>
+          <p className="font-montserrat text-white/35 text-center" style={{ fontSize: 9, letterSpacing: '0.25em' }}>
             PELLIZCA PARA DEEP DIVE · MANO SOBRE BOTÓN PARA SELECCIONAR
           </p>
         </motion.div>
       )}
 
-      {/* Deep Dive overlay */}
+      {/* Deep Dive */}
       <AnimatePresence>
         {showDeepDive && (
           <DeepDive activeLayer={activeLayer} onClose={() => setShowDeepDive(false)} />
